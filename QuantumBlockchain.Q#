@@ -1,0 +1,71 @@
+// Import necessary namespaces
+open Microsoft.Quantum.Intrinsic;
+open Microsoft.Quantum.Canon;
+open Microsoft.Quantum.Measurement;
+
+namespace QuantumBlockchain {
+    operation GenerateQuantumHash(data: String): String {
+        mutable hash = "";
+        using (qubits = Qubit[4]) {
+            // Apply Hadamard gates to all qubits
+            ApplyToEach(H, qubits);
+
+            // Entangle qubits with CNOT gates
+            CNOT(qubits[0], qubits[1]);
+            CNOT(qubits[2], qubits[3]);
+
+            // Apply phase gates
+            S(qubits[0]);
+            T(qubits[1]);
+
+            // Measure the qubits
+            for (qubit in qubits) {
+                let result = MResetZ(qubit);
+                set hash += (if result == Zero then "0" else "1");
+            }
+        }
+        return hash;
+    }
+
+    operation CreateBlock(transactions: String[], previousHash: String): (String, String) {
+        let data = String.Join("", transactions) + previousHash;
+        let blockHash = GenerateQuantumHash(data);
+        return (blockHash, data);
+    }
+
+    operation ValidateChain(chain: (String, String)[]): Bool {
+        mutable isValid = true;
+        for idx in 1 .. Length(chain) - 1 {
+            let (currentHash, currentData) = chain[idx];
+            let (_, previousData) = chain[idx - 1];
+            if (GenerateQuantumHash(previousData) != currentHash) {
+                set isValid = false;
+                break;
+            }
+        }
+        return isValid;
+    }
+
+    @EntryPoint()
+    operation Main(): Unit {
+        mutable blockchain = [("", "Genesis Block")];
+
+        // Add blocks to the blockchain
+        for i in 1 .. 3 {
+            let previousBlock = blockchain[Length(blockchain) - 1];
+            let previousHash = fst previousBlock;
+            let (newHash, newData) = CreateBlock(["Transaction1", "Transaction2"], previousHash);
+            set blockchain += [(newHash, newData)];
+        }
+
+        // Validate the blockchain
+        let isValid = ValidateChain(blockchain);
+        Message($"Blockchain valid: {isValid}");
+
+        // Print the blockchain
+        for block in blockchain {
+            let (hash, data) = block;
+            Message($"Block Hash: {hash}\nData: {data}\n");
+        }
+    }
+}
